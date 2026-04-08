@@ -17,6 +17,7 @@ import * as randomstring from 'randomstring';
 import { compareHash } from 'src/common/security/hash.util';
 import { TokenRepository } from 'src/DB/repositories/token.repository';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { CartRepository } from 'src/DB/repositories/cart.repository';
 
 @Injectable()
 export class AuthService {
@@ -27,6 +28,7 @@ export class AuthService {
     private readonly _JwtService: JwtService,
     private readonly _OTPRepository: OTPRepository,
     private readonly _TokenRepository: TokenRepository,
+    private readonly _CartRepository: CartRepository,
   ) {}
   async register(data: CreateUserDto) {
     // try {
@@ -40,6 +42,8 @@ export class AuthService {
       accountAcctivated: true,
     });
     console.log({ user });
+    // create cart for the user
+    await this._CartRepository.create({ user: user._id });
     return { success: true, message: 'Done' };
     // } catch (error) {
     //   throw new InternalServerErrorException(error);

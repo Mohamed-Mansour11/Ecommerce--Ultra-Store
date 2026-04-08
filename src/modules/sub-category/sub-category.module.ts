@@ -17,5 +17,6 @@ import { CloudinaryProvider } from 'src/common/services/fileupload/cloudinary.pr
     CategoryRepository,
     CloudinaryProvider,
   ],
+  exports: [SubCategoryRepository],
 })
 export class SubCategoryModule {}

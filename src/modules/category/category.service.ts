@@ -54,13 +54,13 @@ export class CategoryService {
       filter: { _id: categoryId },
     });
 
-    // 2. التحقق من وجود الفئة، وإذا لم توجد يتم رمي خطأ
+    //  التحقق من وجود الفئة، وإذا لم توجد يتم رمي خطأ
     if (!category) {
       throw new NotFoundException(`category with id ${categoryId} not found!`);
     }
 
-    // 3. تحديث البيانات إذا كانت موجودة في الـ DTO
-    // image (تمت معالجته في دالة أخرى)
+    //  DTO تحديث البيانات إذا كانت موجودة في الـ
+    // image > (تمت معالجته في دالة أخرى)
     if (updateCategoryDto.name) {
       category.name = updateCategoryDto.name;
       category.updatedBy = userId; // تعيين المستخدم الذي قام بالتحديث
@@ -99,7 +99,8 @@ export class CategoryService {
     const results = await this._FileUploadService.saveFileToCloud([file], {
       public_id,
     });
-    //لو رفعنا الصورة الجديدة بدون تمرير الـ public_id، سيقوم Cloudinary برفعها كملف جديد كلياً بمعرف جديد ورابط جديد
+    //public_id بدون تمرير ال file= لو رفعنا الصورة الجديدة
+    //برفعها كملف جديد كلياً بمعرف جديد ورابط جديد Cloudinary سيقوم
 
     // 3. تحديث بيانات الفئة في قاعدة البيانات
     category.image = results[0];

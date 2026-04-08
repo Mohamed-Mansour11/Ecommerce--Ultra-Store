@@ -9,6 +9,10 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { CategoryModule } from './modules/category/category.module';
 import { ProductModule } from './modules/product/product.module';
 import { SubCategoryModule } from './modules/sub-category/sub-category.module';
+import { CartModule } from './modules/cart/cart.module';
+import { OrderModule } from './modules/order/order.module';
+import { CacheableMemory, createKeyv, Keyv } from 'cacheable';
+import { CacheModule } from '@nestjs/cache-manager';
 
 @Module({
   imports: [
@@ -36,10 +40,29 @@ import { SubCategoryModule } from './modules/sub-category/sub-category.module';
         };
       },
     }),
+
+    CacheModule.registerAsync({
+      useFactory: (configService: ConfigService) => {
+        return {
+          stores: [
+            new Keyv({
+              store: new CacheableMemory(),
+            }),
+            createKeyv(configService.get('REDIS_LOCAL')),
+            // createKeyv(configService.get('REDIS_CLOUD')),
+          ],
+        };
+      },
+      inject: [ConfigService],
+      isGlobal: true,
+    }),
+
     UserModule,
     CategoryModule,
     ProductModule,
     SubCategoryModule,
+    CartModule,
+    OrderModule,
   ],
 
   controllers: [AppController],

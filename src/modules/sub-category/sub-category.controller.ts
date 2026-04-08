@@ -27,7 +27,7 @@ export class SubCategoryController {
   constructor(private readonly subCategoryService: SubCategoryService) {}
 
   @Post()
-  @Roles(Role.admin)
+  @Roles(Role.admin, Role.user)
   @UseInterceptors(FileInterceptor('image'))
   create(
     @Body() data: CreateSubCategoryDto,
@@ -37,7 +37,7 @@ export class SubCategoryController {
     return this.subCategoryService.create(data, userId, file);
   }
 
-  @Roles(Role.admin)
+  @Roles(Role.admin, Role.user)
   @Patch(':id')
   async update(
     @Param('id', ParseObjectIdPipe) subCategoryId: Types.ObjectId,
@@ -51,7 +51,7 @@ export class SubCategoryController {
     );
   }
 
-  @Roles(Role.admin)
+  @Roles(Role.admin, Role.user)
   @Patch(':id/image')
   @UseInterceptors(FileInterceptor('image'))
   async updateImage(
@@ -62,7 +62,7 @@ export class SubCategoryController {
     return this.subCategoryService.updateImage(subCategoryId, file, userId);
   }
 
-  @Roles(Role.admin)
+  @Roles(Role.admin, Role.user)
   @Delete(':id')
   async remove(
     @Param('id', ParseObjectIdPipe) subCategoryId: Types.ObjectId,

@@ -35,30 +35,23 @@ export abstract class AbstractRepository<TDocument> {
     if (populate) query = query.populate(populate);
     if (sort) query = query.sort(sort);
     // 2. منطق تقسيم الصفحات (Pagination)
-    if (paginate?.page) {
-      const { page } = paginate;
-      const limit = 10;
-      const skip = (page - 1) * limit;
+    const page = paginate?.page ? paginate.page : 1;
+    const limit = 2;
+    const skip = (page - 1) * limit;
 
-      // حساب العدد الإجمالي للعناصر بناءً على الاستعلام الحالي
-      const totalSize = await query.model.countDocuments(
-        query.getQuery() as any,
-      );
+    // حساب العدد الإجمالي للعناصر بناءً على الاستعلام الحالي
+    const totalSize = await query.model.countDocuments(query.getQuery() as any);
 
-      // جلب بيانات الصفحة المحددة فقط
-      const data = await query.skip(skip).limit(limit).exec();
+    // جلب بيانات الصفحة المحددة فقط
+    const data = await query.skip(skip).limit(limit).exec();
 
-      return {
-        totalSize,
-        totalPages: Math.ceil(totalSize / limit),
-        pageSize: data.length,
-        pageNumber: page,
-        data,
-      };
-    }
-
-    const data = await query.exec();
-    return { data };
+    return {
+      totalSize,
+      totalPages: Math.ceil(totalSize / limit),
+      pageSize: data.length,
+      pageNumber: page,
+      data,
+    };
   }
 
   async findOne({

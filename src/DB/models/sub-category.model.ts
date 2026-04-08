@@ -15,19 +15,19 @@ export class SubCategory {
     unique: true,
     index: { name: 'subcategory_name_index' },
   })
-  name: string;
+  name!: string;
 
   @Prop({ type: String, unique: true })
-  slug: string;
+  slug!: string;
 
   @Prop({ type: Types.ObjectId, ref: 'Category', required: true })
-  category: Types.ObjectId;
+  category!: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
-  createdBy: Types.ObjectId;
+  createdBy!: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: 'User' })
-  updatedBy: Types.ObjectId;
+  updatedBy!: Types.ObjectId;
 
   @Prop(
     raw({
@@ -35,10 +35,10 @@ export class SubCategory {
       public_id: String,
     }),
   )
-  image: Image;
+  image!: Image;
 
   @Prop({ type: String })
-  cloudFolder: string;
+  cloudFolder!: string;
 }
 
 export const SubCategorySchema = SchemaFactory.createForClass(SubCategory);

@@ -4,9 +4,9 @@ import { Types } from 'mongoose';
 export class CreateSubCategoryDto {
   @IsString()
   @IsNotEmpty()
-  name: string;
+  name!: string;
 
   @IsMongoId()
   @IsNotEmpty()
-  category: Types.ObjectId;
+  category!: Types.ObjectId;
 }

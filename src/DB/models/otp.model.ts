@@ -6,10 +6,10 @@ import { hash } from 'src/common/security/hash.util';
 @Schema({ timestamps: true })
 export class OTP {
   @Prop({ type: String, required: true, unique: true, lowercase: true })
-  email: string;
+  email!: string;
 
   @Prop({ type: String, required: true })
-  otp: string;
+  otp!: string;
 }
 //Schema
 

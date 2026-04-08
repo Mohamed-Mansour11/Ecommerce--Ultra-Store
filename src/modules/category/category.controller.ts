@@ -28,7 +28,7 @@ export class CategoryController {
   constructor(private readonly categoryService: CategoryService) {}
 
   @Post()
-  @Roles(Role.admin)
+  @Roles(Role.user, Role.admin)
   @UseInterceptors(FileInterceptor('image')) // << memory && { storage: diskStorage({}) }
   create(
     @Body() data: CreateCategoryDto,
@@ -40,7 +40,7 @@ export class CategoryController {
     return this.categoryService.create(data, userId, file);
   }
 
-  @Roles(Role.admin)
+  @Roles(Role.admin, Role.user)
   @Patch(':id')
   async update(
     // @Param('id') categoryId: Types.ObjectId,  => Aya
@@ -52,7 +52,7 @@ export class CategoryController {
   }
   //يبقى استخدم بايب @Query | @Param من id طالما الريكويست جاي فيه
   //  استخدمنا البايب في حالة الكويري والبارام علشان لو في خطأ في الآي دي يطلعوا من برة لبرة
-  @Roles(Role.admin)
+  @Roles(Role.admin, Role.user)
   @Patch(':id/image')
   @UseInterceptors(FileInterceptor('image'))
   async updateImage(
@@ -63,7 +63,7 @@ export class CategoryController {
     return this.categoryService.updateImage(categoryId, file, userId);
   }
 
-  @Roles(Role.admin)
+  @Roles(Role.admin, Role.user)
   @Delete(':id')
   async remove(
     @Param('id', ParseObjectIdPipe) categoryId: Types.ObjectId,

@@ -122,11 +122,11 @@ export class SubCategoryService {
       filter: { _id: subCategoryId },
     });
 
-    // if (!subCategory) {
-    //   throw new NotFoundException(
-    //     `SubCategory with id ${subCategoryId} not found!`,
-    //   );
-    // }
+    if (!subCategory) {
+      throw new NotFoundException(
+        `SubCategory with id ${subCategoryId} not found!`,
+      );
+    }
 
     return { data: subCategory };
   }

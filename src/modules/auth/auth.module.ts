@@ -10,6 +10,7 @@ import { TokenRepository } from 'src/DB/repositories/token.repository';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthGuard } from 'src/common/guards/auth.guard';
 import { RolesGuard } from 'src/common/guards/authorization.guards';
+import { CartModule } from '../cart/cart.module';
 @Module({
   controllers: [AuthController],
   providers: [
@@ -26,6 +27,6 @@ import { RolesGuard } from 'src/common/guards/authorization.guards';
       useClass: RolesGuard,
     },
   ],
-  imports: [UserModule, OTPModel, TokenModel],
+  imports: [UserModule, OTPModel, TokenModel, CartModule],
 })
 export class AuthModule {}

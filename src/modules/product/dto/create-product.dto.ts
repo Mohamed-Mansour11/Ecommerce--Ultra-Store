@@ -12,27 +12,27 @@ import {
 export class CreateProductDto {
   @IsString()
   @IsNotEmpty()
-  name: string;
+  name!: string;
 
   @IsString()
   @IsOptional()
-  description: string;
+  description!: string;
 
   @IsNumber()
   @Min(1)
   @Type(() => Number)
-  price: number;
+  price!: number;
 
   @IsNumber()
   @IsOptional()
   @Min(1)
   @Max(100)
   @Type(() => Number)
-  discount: number;
+  discount!: number;
 
   @IsNumber()
   @Min(1)
   @IsInt()
   @Type(() => Number)
-  stock: number;
+  stock!: number;
 }
