@@ -24,18 +24,25 @@ export class Cart {
     ],
   })
   products!: { productId: Types.ObjectId; quantity: number; price: number }[];
+
+  @Prop({ type: Number, default: 0 })
+  totalPrice!: number;
 }
 
 // schema
 export const CartSchema = SchemaFactory.createForClass(Cart);
 
-// model name
+CartSchema.pre('save', function () {
+  // نقوم بحساب الإجمالي: جمع (سعر الوحدة × الكمية) لكل المنتجات
+  this.totalPrice = this.products.reduce((acc, item) => {
+    return acc + item.price * item.quantity;
+  }, 0);
+});
+
 export const CartModelName = Cart.name;
 
-// model
 export const CartModel = MongooseModule.forFeature([
   { name: CartModelName, schema: CartSchema },
 ]);
 
-// Cartdocument
 export type CartDocument = HydratedDocument<Cart>;

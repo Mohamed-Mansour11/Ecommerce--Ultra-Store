@@ -1,5 +1,5 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { UserRepository } from '../../DB/repositories/user.repository';
+import { UserRepository } from 'src/DB/repositories/user.repository';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { compareHash } from 'src/common/security/hash.util';
 import { LoginDto } from '../auth/dto/login.dto';

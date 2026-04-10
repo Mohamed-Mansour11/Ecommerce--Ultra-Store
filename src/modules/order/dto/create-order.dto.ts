@@ -13,3 +13,4 @@ export class CreateOrderDto {
   @IsOptional()
   paymentMethod!: PaymentMethod;
 }
+// DTO fields: el Goz2 elly byeigi men el user fel request mn el schema fields + validation

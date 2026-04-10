@@ -50,7 +50,7 @@ export class Product {
   @Prop({ type: String })
   cloudFolder!: string;
 
-  @Prop({ type: Types.ObjectId, ref: CategoryModelName, required: true })
+  @Prop({ type: Types.ObjectId, ref: CategoryModelName })
   category!: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: SubCategoryModelName, required: true })

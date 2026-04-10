@@ -1,4 +1,4 @@
-import { Model, UpdateQuery, QueryFilter } from 'mongoose';
+import { Model, UpdateQuery, QueryFilter, QueryOptions } from 'mongoose';
 export interface IPaginate {
   page: number;
 }
@@ -19,6 +19,7 @@ export type updateArgs<TDocument> = {
   update: UpdateQuery<TDocument>;
   populate?: any;
   select?: string;
+  options?: QueryOptions<TDocument>;
 };
 export abstract class AbstractRepository<TDocument> {
   protected constructor(private readonly model: Model<TDocument>) {}
@@ -88,5 +89,17 @@ export abstract class AbstractRepository<TDocument> {
   async delete(filter: QueryFilter<TDocument>): Promise<TDocument | null> {
     let query = this.model.findOneAndDelete(filter);
     return query.exec();
+  }
+
+  // داخل AbstractRepository
+  async findOneAndUpdate(
+    filter: QueryFilter<TDocument>,
+    update: UpdateQuery<TDocument>,
+    options: QueryOptions<TDocument> = {
+      returnDocument: 'after',
+      upsert: true,
+    },
+  ): Promise<TDocument | null> {
+    return await this.model.findOneAndUpdate(filter, update, options);
   }
 }

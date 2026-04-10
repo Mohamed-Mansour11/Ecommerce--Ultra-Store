@@ -21,34 +21,95 @@ export class OrderService {
     private readonly _PaymentService: PaymentService,
   ) {}
 
+  // async create(data: CreateOrderDto, user: UserDocument) {
+  //   // user id
+  //   const userId = user._id;
+
+  //   // check cart
+  //   const cart = await this._CartService.getCart(userId);
+  //   // console.log({ cart });
+
+  //   if (!cart || !cart.products.length)
+  //     throw new BadRequestException('Empty Cart!');
+
+  //   let price = 0;
+  //   let products: any = [];
+  //   // check products
+  //   for (const prd of cart.products) {
+  //     // check product in DB
+  //     const product = await this._ProductService.checkProductExistence(
+  //       prd.productId,
+  //     );
+
+  //     // check stock
+  //     if (!this._ProductService.inStock(product, prd.quantity))
+  //       throw new BadRequestException(
+  //         `Sorry only ${product.stock} are only avaiable!`,
+  //       );
+
+  //     await this._ProductService.updateStock(
+  //       prd.productId as any,
+  //       prd.quantity,
+  //       false,
+  //     );
+
+  //     price += product.finalPrice * prd.quantity;
+  //     products.push({
+  //       name: product.name,
+  //       price: product.finalPrice,
+  //       quantity: prd.quantity,
+  //       image: product.thumbnail?.secure_url,
+  //     });
+  //   }
+
+  //   // create order
+  //   const order = await this._OrderRepository.create({
+  //     ...data,
+  //     cart: cart._id,
+  //     user: userId,
+  //     price,
+  //   });
+
+  //   // payment cash >>> update stock
+  //   // card >> payment online >>>>
+
+  //   // clear cart
+  //   await this._CartService.clearCart(userId);
+  //   return { message: 'done', order };
+
+  //   const session = await this.payWithCard(order.id, products, user.email);
+
+  //   return { message: 'done', data: session.url };
+  // }
+
   async create(data: CreateOrderDto, user: UserDocument) {
-    // user id
     const userId = user._id;
 
-    // check cart
+    // 1. جلب العربة والتأكد من وجود منتجات
     const cart = await this._CartService.getCart(userId);
-    // console.log({ cart });
-
-    if (!cart || !cart.products.length)
+    if (!cart || !cart.products.length) {
       throw new BadRequestException('Empty Cart!');
+    }
 
     let price = 0;
     let products: any = [];
-    // check products
+
+    // 2. التحقق من وجود المنتجات وصلاحية المخزون (Validation Only)
     for (const prd of cart.products) {
-      // check product in DB
       const product = await this._ProductService.checkProductExistence(
         prd.productId,
       );
 
-      // check stock
-      if (!this._ProductService.inStock(product, prd.quantity))
+      if (!this._ProductService.inStock(product, prd.quantity)) {
         throw new BadRequestException(
-          `Sorry only ${product.stock} are only avaiable!`,
+          `Sorry only ${product.stock} items are available for ${product.name}!`,
         );
+      }
 
+      // حساب السعر الإجمالي وتجهيز بيانات الأوردر
       price += product.finalPrice * prd.quantity;
       products.push({
+        productId: prd.productId, // نحتاجه للخصم لاحقاً
         name: product.name,
         price: product.finalPrice,
         quantity: prd.quantity,
@@ -56,7 +117,7 @@ export class OrderService {
       });
     }
 
-    // create order
+    // 3. إنشاء الأوردر في قاعدة البيانات (حفظ السجل أولاً لضمان سلامة البيانات)
     const order = await this._OrderRepository.create({
       ...data,
       cart: cart._id,
@@ -64,16 +125,33 @@ export class OrderService {
       price,
     });
 
-    // payment cash >>> update stock
-    // card >> payment online >>>>
+    // 4. الآن نقوم بخصم الكميات من المخزن الفعلي في قاعدة البيانات
+    for (const item of products) {
+      await this._ProductService.updateStock(
+        item.productId as any,
+        item.quantity,
+        false, // false تعني خصم (Decrement)
+      );
+    }
 
-    // clear cart
+    // 5. مسح محتويات العربة بعد نجاح العملية
     await this._CartService.clearCart(userId);
-    return { message: 'done' };
 
-    const session = await this.payWithCard(order.id, products, user.email);
+    // 6. منطق الرد النهائي وتحديد وسيلة الدفع
 
-    return { message: 'done', data: session.url };
+    // أ: في حالة الدفع النقدي (Cash)
+    if (data.paymentMethod === PaymentMethod.cash) {
+      return { message: 'Order created successfully (Cash)', order };
+    }
+
+    // ب: في حالة الدفع بالبطاقة (Card) - ننتقل لإنشاء جلسة Stripe
+    const session = await this.payWithCard(order._id, products, user.email);
+
+    return {
+      message: 'Checkout session created',
+      data: session.url,
+      orderId: order._id,
+    };
   }
 
   async payWithCard(orderId: any, products: any[], userEmail: string) {

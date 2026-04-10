@@ -21,7 +21,7 @@ import { ParseObjectIdPipe } from '@nestjs/mongoose/dist/pipes/parse-object-id.p
 @Controller('order')
 export class OrderController {
   constructor(private readonly orderService: OrderService) {}
-
+  @Roles(Role.user)
   @Post()
   async create(@Body() data: CreateOrderDto, @User() user: UserDocument) {
     return this.orderService.create(data, user);

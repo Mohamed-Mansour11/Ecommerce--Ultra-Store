@@ -3,6 +3,7 @@ import { StockGateway } from './../socket/stock.gateway';
 import { ProductDocument } from './../../DB/models/product.model';
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   NotFoundException,
@@ -54,8 +55,8 @@ export class ProductService {
       filter: { name: data.name },
     });
     if (isProduct) {
-      throw new NotFoundException(
-        `Product with name ${data.name} already existed!`,
+      throw new ConflictException(
+        `Product with name ${data.name} already exists!`,
       );
     }
 
@@ -283,14 +284,35 @@ export class ProductService {
     quantity: number,
     increment: boolean,
   ) {
-    const product = await this._ProductRepository.update({
+    // 1. تحديث الستوك في قاعدة البيانات
+    await this._ProductRepository.update({
       filter: { _id: productId },
-      update: { $inc: { stock: increment ? quantity : -quantity } }, // inc + , - dec
+      update: { $inc: { stock: increment ? quantity : -quantity } },
     });
 
-    // socket
-    this._StockGateway.broadcastStockUpdate(product!._id, product!.stock);
+    // 2. بما أن update لا تعيد البيانات، يجب جلب المنتج يدوياً إذا أردت استخدامه في الـ Socket
+    const updatedProduct = await this._ProductRepository.findOne({
+      filter: { _id: productId },
+    });
 
-    return product;
+    if (updatedProduct) {
+      this._StockGateway.broadcastStockUpdate(
+        updatedProduct._id,
+        updatedProduct.stock,
+      );
+    }
+
+    return updatedProduct;
+  }
+
+  private async clearProductCache() {
+    const keys: string[] = await this.cacheManager.store.keys();
+    // البحث عن كل المفاتيح التي تبدأ بـ "products:"
+    const productKeys = keys.filter((key) => key.startsWith('products:'));
+
+    if (productKeys.length > 0) {
+      await Promise.all(productKeys.map((key) => this.cacheManager.del(key)));
+      console.log(`Caches cleared for keys: ${productKeys}`);
+    }
   }
 }
