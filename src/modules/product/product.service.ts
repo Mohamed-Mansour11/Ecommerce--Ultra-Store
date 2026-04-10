@@ -306,13 +306,29 @@ export class ProductService {
   }
 
   private async clearProductCache() {
-    const keys: string[] = await this.cacheManager.store.keys();
-    // البحث عن كل المفاتيح التي تبدأ بـ "products:"
-    const productKeys = keys.filter((key) => key.startsWith('products:'));
+    try {
+      // الوصول إلى الـ store باستخدام Type Casting لتجنب خطأ "property store does not exist"
+      const store = (this.cacheManager as any).store;
 
-    if (productKeys.length > 0) {
-      await Promise.all(productKeys.map((key) => this.cacheManager.del(key)));
-      console.log(`Caches cleared for keys: ${productKeys}`);
+      // جلب جميع المفاتيح الموجودة في الكاش
+      const keys: string[] = await store.keys();
+
+      // فلترة المفاتيح التي تبدأ بـ "products:"
+      const productKeys = keys.filter((key) => key.startsWith('products:'));
+
+      if (productKeys.length > 0) {
+        // حذف المفاتيح المفلترة بالتوازي لضمان السرعة
+        await Promise.all(productKeys.map((key) => this.cacheManager.del(key)));
+
+        console.log(
+          `✅ [Cache Cleared] Removed ${productKeys.length} keys: ${productKeys}`,
+        );
+      } else {
+        console.log('ℹ️ [Cache] No product keys found to clear.');
+      }
+    } catch (error) {
+      // منع توقف التطبيق في حالة فشل عملية الكاش
+      console.error('❌ [Cache Error] Failed to clear product cache:', error);
     }
   }
 }
