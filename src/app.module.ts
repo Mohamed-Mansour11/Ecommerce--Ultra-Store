@@ -13,6 +13,10 @@ import { CartModule } from './modules/cart/cart.module';
 import { OrderModule } from './modules/order/order.module';
 import { CacheableMemory, createKeyv, Keyv } from 'cacheable';
 import { CacheModule } from '@nestjs/cache-manager';
+import { CouponModule } from './modules/coupon/coupon.module';
+import { ReviewModule } from './modules/review/review.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { WishlistModule } from './modules/wishlist/wishlist.module';
 
 @Module({
   imports: [
@@ -47,6 +51,7 @@ import { CacheModule } from '@nestjs/cache-manager';
           stores: [
             new Keyv({
               store: new CacheableMemory(),
+              ttl: configService.get('TTL'),
             }),
             createKeyv(configService.get('REDIS_LOCAL')),
             // createKeyv(configService.get('REDIS_CLOUD')),
@@ -63,6 +68,10 @@ import { CacheModule } from '@nestjs/cache-manager';
     SubCategoryModule,
     CartModule,
     OrderModule,
+    CouponModule,
+    ReviewModule,
+    AnalyticsModule,
+    WishlistModule,
   ],
 
   controllers: [AppController],

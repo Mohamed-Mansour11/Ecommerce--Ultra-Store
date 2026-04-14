@@ -20,8 +20,8 @@ export class PaymentService {
       line_items, // array of products
       customer_email,
       discounts,
-      success_url: 'http://localhost:5000/success',
-      cancel_url: 'http://localhost:5000/cancel',
+      success_url: 'http://localhost:3000/success',
+      cancel_url: 'http://localhost:3000/cancel',
       metadata,
     });
 

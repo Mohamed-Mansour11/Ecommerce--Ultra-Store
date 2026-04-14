@@ -28,5 +28,6 @@ import { CartModule } from '../cart/cart.module';
     },
   ],
   imports: [UserModule, OTPModel, TokenModel, CartModule],
+  exports: [AuthService, JwtService, TokenRepository, UserModule],
 })
 export class AuthModule {}

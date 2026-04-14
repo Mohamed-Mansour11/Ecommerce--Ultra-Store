@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { Types } from 'mongoose';
 import { ConfigService } from '@nestjs/config';
 import { FileUploadService } from 'src/common/services/fileupload/fileupload.service';
@@ -7,6 +12,7 @@ import { CategoryRepository } from 'src/DB/repositories/category.repository';
 import { CreateSubCategoryDto } from './dto/create-sub-category.dto';
 import { UpdateSubCategoryDto } from './dto/update-sub-category.dto';
 import { nanoid } from 'nanoid';
+import { ProductService } from '../product/product.service';
 
 @Injectable()
 export class SubCategoryService {
@@ -15,6 +21,9 @@ export class SubCategoryService {
     private readonly _configService: ConfigService,
     private readonly _SubCategoryRepository: SubCategoryRepository,
     private readonly _CategoryRepository: CategoryRepository,
+    // حقن ProductService باستخدام forwardRef لفك الارتباط الدائري
+    @Inject(forwardRef(() => ProductService))
+    private readonly _ProductService: ProductService,
   ) {}
 
   async create(
@@ -69,6 +78,9 @@ export class SubCategoryService {
       subCategory.name = updateSubCategoryDto.name;
       subCategory.updatedBy = userId;
       await subCategory.save();
+
+      //  مسح كاش المنتجات لأن اسم القسم الفرعي تغير (يؤثر على الـ Populate)
+      await this._ProductService.clearProductCache();
     }
 
     return { data: subCategory };
@@ -98,6 +110,9 @@ export class SubCategoryService {
     subCategory.updatedBy = userId;
     await subCategory.save();
 
+    //  مسح الكاش عند تغيير الصورة
+    await this._ProductService.clearProductCache();
+
     return { data: subCategory };
   }
 
@@ -113,6 +128,9 @@ export class SubCategoryService {
     }
 
     await subCategory.deleteOne();
+
+    //  مسح كاش المنتجات بعد حذف القسم الفرعي
+    await this._ProductService.clearProductCache();
 
     return { message: 'done' };
   }

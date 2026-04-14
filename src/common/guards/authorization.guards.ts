@@ -21,6 +21,11 @@ export class RolesGuard implements CanActivate {
       context.getClass(), // class
     ]);
 
+    // إذا كان المسار لا يطلب رتبة معينة، اسمح للريكويست بالمرور بأمان
+    if (!requiredRoles || requiredRoles.length === 0) {
+      return true;
+    }
+
     const { user } = context.switchToHttp().getRequest();
 
     // ["admin", "user"]

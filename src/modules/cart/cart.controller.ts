@@ -1,19 +1,10 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Delete } from '@nestjs/common';
 import { CartService } from './cart.service';
 import { CartDto } from './dto/create-cart.dto';
-import { UpdateCartDto } from './dto/update-cart.dto';
+import { Types } from 'mongoose';
 import { Roles } from 'src/common/decorarors/roles.decorator';
 import { Role } from 'src/DB/enums/user.enum';
 import { User } from 'src/common/decorarors/user.decorator';
-import { Types } from 'mongoose';
 
 @Controller('cart')
 export class CartController {
@@ -41,5 +32,22 @@ export class CartController {
   @Get()
   async getCart(@User('_id') userId: Types.ObjectId) {
     return this.cartService.getCart(userId);
+  }
+
+  @Roles(Role.user)
+  @Post('coupon/apply')
+  async applyCouponToCart(
+    @Body('code') code: string,
+    @User('_id') userId: Types.ObjectId,
+  ) {
+    // هذا هو المسار الفعلي الذي يربط الكوبون بعربة المستخدم ويخصم السعر
+    return this.cartService.applyCoupon(userId, code);
+  }
+
+  @Roles(Role.user)
+  @Delete('coupon/remove')
+  async removeCouponFromCart(@User('_id') userId: Types.ObjectId) {
+    // إزالة الكوبون من العربة وإعادة حساب السعر الأصلي
+    return this.cartService.removeCoupon(userId);
   }
 }

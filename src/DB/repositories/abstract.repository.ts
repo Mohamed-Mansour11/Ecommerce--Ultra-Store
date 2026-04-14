@@ -1,6 +1,7 @@
 import { Model, UpdateQuery, QueryFilter, QueryOptions } from 'mongoose';
 export interface IPaginate {
   page: number;
+  limit?: number;
 }
 
 export type finderOneArg<TDocument> = {
@@ -37,7 +38,7 @@ export abstract class AbstractRepository<TDocument> {
     if (sort) query = query.sort(sort);
     // 2. منطق تقسيم الصفحات (Pagination)
     const page = paginate?.page ? paginate.page : 1;
-    const limit = 2;
+    const limit = paginate?.limit ? paginate.limit : 10;
     const skip = (page - 1) * limit;
 
     // حساب العدد الإجمالي للعناصر بناءً على الاستعلام الحالي

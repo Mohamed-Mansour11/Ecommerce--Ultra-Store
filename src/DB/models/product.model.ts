@@ -77,8 +77,11 @@ export class Product {
   })
   finalPrice!: number;
 
-  @Prop({ type: Number, min: 0, max: 5 })
-  rating!: number;
+  @Prop({ type: Number, default: 0, min: 0, max: 5 })
+  rateAvg!: number; // متوسط التقييمات (مثلاً 4.5)
+
+  @Prop({ type: Number, default: 0 })
+  rateCount!: number; // إجمالي عدد التقييمات (مثلاً 150 شخص قيم المنتج)
 }
 
 // --- إنشاء الـ Schema والـ Model ---
