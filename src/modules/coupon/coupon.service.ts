@@ -63,13 +63,14 @@ export class CouponService {
 
   // دالة زيادة عداد الاستخدام (نستدعيها بعد نجاح عملية الدفع الفعلي)
 
-  async incrementUsage(couponId: Types.ObjectId) {
+  async incrementUsage(couponId: Types.ObjectId, session?: any) {
     if (!couponId) return;
 
     await this._CouponRepository.update({
       filter: { _id: couponId },
       update: { $inc: { usedCount: 1 } },
-    });
+      options: { session },
+    } as any);
   }
 
   // دالة إنشاء الكوبون (خاصة بالأدمن)

@@ -192,7 +192,7 @@ export class ProductService {
     return { data: product };
   }
 
-  // 🔥 إضافة الكاش لدالة جلب منتج واحد
+  // إضافة الكاش لدالة جلب منتج واحد
   async find(productId: Types.ObjectId) {
     const key = `product:${productId}`;
     const cached = await this.cacheManager.get(key);
@@ -260,26 +260,32 @@ export class ProductService {
   inStock(product: ProductDocument, requiredQuantity: number) {
     return product.stock >= requiredQuantity;
   }
-
   async updateStock(
     productId: Types.ObjectId,
     quantity: number,
     increment: boolean,
+    session?: any,
   ) {
+    // 1. تمرير الجلسة في التحديث (مع استخدام as any لتخطي اعتراضات TypeScript إن وجدت)
     await this._ProductRepository.update({
       filter: { _id: productId },
       update: { $inc: { stock: increment ? quantity : -quantity } },
-    });
+      options: { session },
+    } as any);
 
+    // 2.  تمرير الجلسة هنا ضروري جداً لكي نقرأ المخزون الجديد من داخل الـ Transaction
     const updatedProduct = await this._ProductRepository.findOne({
       filter: { _id: productId },
-    });
+      options: { session }, // <-- إضافة الجلسة هنا
+    } as any);
 
     if (updatedProduct) {
+      // إرسال التحديث للفرونت إند عبر الـ Sockets
       this._StockGateway.broadcastStockUpdate(
         updatedProduct._id,
         updatedProduct.stock,
       );
+      // مسح الكاش
       await this.clearProductCache();
     }
 

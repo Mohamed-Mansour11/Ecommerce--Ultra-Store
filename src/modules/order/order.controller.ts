@@ -6,7 +6,12 @@ import {
   Patch,
   Param,
   Delete,
+  Headers, // إضافة Headers
+  Req, // إضافة Req
+  // إضافة RawBodyRequest
 } from '@nestjs/common';
+import type { RawBodyRequest } from '@nestjs/common'; // تأكد من استيراد RawBodyRequest
+import { Request } from 'express'; // تأكد من استيراد Request من مكتبة express
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
@@ -21,18 +26,22 @@ import { ParseObjectIdPipe } from '@nestjs/mongoose/dist/pipes/parse-object-id.p
 @Controller('order')
 export class OrderController {
   constructor(private readonly orderService: OrderService) {}
+
   @Roles(Role.user)
   @Post()
   async create(@Body() data: CreateOrderDto, @User() user: UserDocument) {
     return this.orderService.create(data, user);
   }
 
+  // التعديل هنا: استقبال الـ Raw Body والتوقيع
   @Post('/webhook')
   @Public()
-  async stripeWebhook(@Body() data: any) {
-    console.log({ dataFromStripe: data });
-    this.orderService.stripeWebhook(data);
-    return;
+  async stripeWebhook(
+    @Headers('stripe-signature') signature: string,
+    @Req() req: RawBodyRequest<Request>,
+  ) {
+    // نمرر التوقيع والـ Buffer الخام إلى الـ Service للتحقق
+    return this.orderService.stripeWebhook(signature, req.rawBody);
   }
 
   @Roles(Role.user)

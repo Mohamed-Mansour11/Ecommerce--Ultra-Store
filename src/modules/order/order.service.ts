@@ -1,17 +1,22 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UserDocument } from 'src/DB/models/user.model';
-import { Types } from 'mongoose';
+import { Connection, Types } from 'mongoose';
 import { OrderRepository } from 'src/DB/repositories/order.repository';
 import { CartService } from '../cart/cart.service';
 import { ProductService } from '../product/product.service';
 import { CouponService } from '../coupon/coupon.service';
 import { PaymentService } from 'src/common/services/payment/payment.service';
 import { OrderStatus, PaymentMethod } from 'src/DB/models/order.model';
+import { ConfigService } from '@nestjs/config/dist/config.service';
+import { Stripe } from 'stripe';
+import { STRIPE_CLIENT } from 'src/common/constants';
+import { InjectConnection } from '@nestjs/mongoose/dist/common/mongoose.decorators';
 
 @Injectable()
 export class OrderService {
@@ -21,6 +26,10 @@ export class OrderService {
     private readonly _ProductService: ProductService,
     private readonly _CouponService: CouponService,
     private readonly _PaymentService: PaymentService,
+    private readonly _ConfigService: ConfigService,
+
+    @Inject(STRIPE_CLIENT) private readonly stripe: Stripe,
+    @InjectConnection() private readonly connection: Connection,
   ) {}
 
   async create(data: CreateOrderDto, user: UserDocument) {
@@ -200,88 +209,122 @@ export class OrderService {
       status: order.orderStatus,
     };
   }
+  async stripeWebhook(signature: string, rawBody: Buffer | undefined) {
+    if (!signature || !rawBody) {
+      throw new BadRequestException('Missing signature or raw body');
+    }
 
-  async stripeWebhook(info: any) {
-    // 1. صمام أمان: التأكد من أن info ليست undefined أو null ولديها خاصية type
-    // هذا يمنع خطأ TypeError: Cannot read properties of undefined (reading 'type')
-    if (!info || !info.type) {
-      console.error('⚠️ [Stripe Webhook] Received invalid or empty data.');
+    const webhookSecret = this._ConfigService.get<string>(
+      'STRIPE_WEBHOOK_SECRET',
+    );
+    let event: Stripe.Event;
+
+    try {
+      // التحقق من صحة الطلب وأنه قادم من سترايب فعلاً
+      event = this.stripe.webhooks.constructEvent(
+        rawBody,
+        signature,
+        webhookSecret!,
+      );
+    } catch (err: any) {
+      console.error(
+        `⚠️ [Stripe Webhook] Signature verification failed:`,
+        err.message,
+      );
+      throw new BadRequestException(`Webhook Error: ${err.message}`);
+    }
+
+    if (event.type !== 'checkout.session.completed') {
+      console.log(`[Stripe Webhook] Event ignored: ${event.type}`);
       return;
     }
 
-    // 2. فلترة الأحداث: نحن نهتم فقط بنجاح الجلسة (Checkout Session Completed)
-    if (info.type !== 'checkout.session.completed') {
-      console.log(`[Stripe Webhook] Event ignored: ${info.type}`);
-      return;
-    }
+    const sessionStripe = event.data.object as Stripe.Checkout.Session;
+    const orderId = sessionStripe.metadata?.orderId;
 
-    // 3. استخراج البيانات باستخدام Optional Chaining لضمان عدم الانهيار في حالة نقص الحقول
-    const session = info.data?.object;
-    const orderId = session?.metadata?.orderId;
-
-    // 4. فحص وجود معرف الطلب (OrderId)
     if (!orderId) {
       console.error(' [Stripe Webhook] Missing orderId in session metadata.');
       return;
     }
 
+    // ==========================================
+    // 🚀 بداية الـ TRANSACTION لحماية الداتابيز
+    // ==========================================
+    const dbSession = await this.connection.startSession();
+    dbSession.startTransaction();
+
     try {
-      // 5. تحديث حالة الأوردر وحفظ الـ payment_intent
-      // نستخدم findOneAndUpdate لضمان أننا نحدث فقط الطلبات التي لم تُدفع بعد (paid: false)
+      // 1. تمرير الجلسة للـ findOneAndUpdate
       const order = await this._OrderRepository.findOneAndUpdate(
         {
           _id: new Types.ObjectId(orderId),
-          paid: false, // حماية من تكرار العملية (Idempotency)
+          paid: false,
         },
         {
           paid: true,
-          payment_intent: session.payment_intent,
-          orderStatus: OrderStatus.placed, // تحديث الحالة إلى "تم الطلب"
+          payment_intent: sessionStripe.payment_intent as string,
+          orderStatus: OrderStatus.placed,
         },
-        { returnDocument: 'after' },
+        { returnDocument: 'after', session: dbSession }, // 👈 تمرير الـ session هنا
       );
 
-      // 6. إذا تم العثور على الطلب وتحديثه بنجاح، نبدأ العمليات المعتمدة
       if (order) {
         const currentOrder = order as any;
-
         console.log(
           ` [Stripe Webhook] Processing final steps for Order: ${orderId}`,
         );
 
-        // أ. تحديث المخزون (تقليل الكميات)
+        // 2. تحديث المخزون (تمرير الجلسة)
         if (currentOrder.products && currentOrder.products.length > 0) {
           await Promise.all(
             currentOrder.products.map((item: any) =>
               this._ProductService.updateStock(
                 item.productId as any,
                 item.quantity,
-                false, // false تعني تقليل المخزون
+                false,
+                dbSession, // 👈 تمرير الـ session هنا
               ),
             ),
           );
         }
 
-        // ب. زيادة عداد استخدام الكوبون (بما أن الدفع اكتمل)
+        // 3. تحديث الكوبون (تمرير الجلسة)
         if (currentOrder.coupon) {
-          await this._CouponService.incrementUsage(currentOrder.coupon);
-          console.log(`🎫 [Stripe Webhook] Coupon usage incremented.`);
+          await this._CouponService.incrementUsage(
+            currentOrder.coupon,
+            dbSession,
+          ); // 👈 تمرير الـ session هنا
         }
 
-        // ج. مسح العربة (Cart) للمستخدم بعد نجاح الدفع
-        await this._CartService.clearCart(currentOrder.user);
+        // 4. مسح العربة (تمرير الجلسة)
+        await this._CartService.clearCart(currentOrder.user, dbSession); // 👈 تمرير الـ session هنا
 
+        // ==========================================
+        // ✅ تأكيد جميع العمليات وحفظها في الداتابيز
+        // ==========================================
+        await dbSession.commitTransaction();
         console.log(
-          ` [Stripe Webhook] Order ${orderId} finalized successfully.`,
+          `✅ [Stripe Webhook] Order ${orderId} finalized safely with Transaction.`,
         );
       } else {
+        // إذا لم يجد الأوردر، تراجع عن أي شيء حدث داخل الجلسة
+        await dbSession.abortTransaction();
         console.warn(
           ` [Stripe Webhook] Order ${orderId} was not found or already marked as paid.`,
         );
       }
     } catch (error) {
-      // حماية السيرفر من أي أخطاء غير متوقعة أثناء التعامل مع الداتا بيز
-      console.error(` [Stripe Webhook] Critical Error:`, error);
+      // ==========================================
+      // 🚨 التراجع عن كل العمليات في حال حدوث أي خطأ
+      // ==========================================
+      await dbSession.abortTransaction();
+      console.error(
+        `🚨 [Stripe Webhook] Transaction Aborted due to error:`,
+        error,
+      );
+    } finally {
+      // إغلاق الجلسة في جميع الحالات لتنظيف الذاكرة
+      dbSession.endSession();
     }
   }
 }

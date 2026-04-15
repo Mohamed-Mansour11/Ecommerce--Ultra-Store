@@ -2,12 +2,16 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import { ValidationPipe } from '@nestjs/common';
-import cors from 'cors';
+import cors from 'cors'; // تأكد من استخدامك لـ cors إذا كنت تحتاجه
 import { ErrorHandlingInterceptor } from './common/interceptors/error-handle.interceptor';
 import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // تم إضافة { rawBody: true } هنا لتفعيل النسخة الخام من الطلبات
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    rawBody: true,
+  });
+
   app.set('query parser', 'extended');
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),

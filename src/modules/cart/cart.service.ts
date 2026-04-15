@@ -122,16 +122,19 @@ export class CartService {
     return { data: cart };
   }
 
-  async clearCart(userId: Types.ObjectId) {
+  // 1. أضفنا session?: any كمعامل اختياري
+  async clearCart(userId: Types.ObjectId, session?: any) {
     const cart = await this._CartRepository.findOne({
       filter: { user: userId },
     });
+
     if (!cart) throw new NotFoundException('Cart not found!');
 
     cart.products = [];
     cart.coupon = null; // إفراغ الكوبون أيضاً
 
-    await cart.save();
+    // 2. مررنا الـ session لدالة الحفظ
+    await cart.save({ session });
     return { data: cart };
   }
 
