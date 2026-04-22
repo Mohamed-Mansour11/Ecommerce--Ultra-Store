@@ -22,12 +22,13 @@ export class UserController {
   //profile
   @Get('/profile')
   @Roles(Role.user, Role.admin, Role.seller)
-  //   @UseGuards(AuthGuard) // return true
+  @UseGuards(AuthGuard) // return true
   profile() {
     return 'Done'; //service
   }
 
   @Post('address')
+  @Roles(Role.user)
   async addAddress(
     @Body() body: AddAddressDto,
     @User('_id') userId: Types.ObjectId,
@@ -36,6 +37,7 @@ export class UserController {
   }
 
   @Delete('address/:addressId')
+  @Roles(Role.user)
   async removeAddress(
     @Param('addressId') addressId: string,
     @User('_id') userId: Types.ObjectId,

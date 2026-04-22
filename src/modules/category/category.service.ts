@@ -11,7 +11,6 @@ import { Types } from 'mongoose';
 import { CategoryRepository } from 'src/DB/repositories/category.repository';
 import { nanoid } from 'nanoid';
 import { UpdateCategoryDto } from './dto/update-category.dto';
-// 🔥 1. استيراد ProductService (تأكد من صحة مسار الملف لديك)
 import { ProductService } from '../product/product.service';
 
 @Injectable()
