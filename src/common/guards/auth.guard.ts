@@ -13,13 +13,6 @@ import { TokenRepository } from 'src/DB/repositories/token.repository';
 import { UserRepository } from 'src/DB/repositories/user.repository';
 import { IS_PUBLIC_KEY } from '../decorarors/public.decorator';
 
-// @UseGuards() // Authentication , authorization
-// @UsePipes() // validation
-
-// ----------------------------------------------------------------
-// Middleware (NESTJS) // Logger Parsing CORS
-// Interceptor
-
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(
@@ -44,8 +37,9 @@ export class AuthGuard implements CanActivate {
     if (!token) throw new UnauthorizedException();
 
     try {
+      // 👈 [التحديث الأمني]: نستخدم مفتاح الـ Access Token للتحقق
       const payload = this._JwtService.verify(token, {
-        secret: this._ConfigService.get('JWT_SECRET'),
+        secret: this._ConfigService.get('JWT_ACCESS_SECRET'),
       });
 
       const user = await this._UserRepository.findOne({

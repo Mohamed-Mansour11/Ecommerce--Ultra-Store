@@ -10,6 +10,8 @@ import {
   UploadedFile,
   Query,
   ParseIntPipe,
+  ParseFilePipeBuilder,
+  HttpStatus,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Types } from 'mongoose';
@@ -32,7 +34,13 @@ export class SubCategoryController {
   create(
     @Body() data: CreateSubCategoryDto,
     @User('_id') userId: Types.ObjectId,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({ fileType: /(jpg|jpeg|png|webp)$/ })
+        .addMaxSizeValidator({ maxSize: 2 * 1024 * 1024 })
+        .build({ errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY }),
+    )
+    file: Express.Multer.File,
   ) {
     return this.subCategoryService.create(data, userId, file);
   }
@@ -57,7 +65,13 @@ export class SubCategoryController {
   async updateImage(
     @Param('id', ParseObjectIdPipe) subCategoryId: Types.ObjectId,
     @User('_id') userId: Types.ObjectId,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({ fileType: /(jpg|jpeg|png|webp)$/ })
+        .addMaxSizeValidator({ maxSize: 2 * 1024 * 1024 })
+        .build({ errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY }),
+    )
+    file: Express.Multer.File,
   ) {
     return this.subCategoryService.updateImage(subCategoryId, file, userId);
   }

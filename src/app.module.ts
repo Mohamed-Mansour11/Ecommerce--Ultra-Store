@@ -18,8 +18,16 @@ import { ReviewModule } from './modules/review/review.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { WishlistModule } from './modules/wishlist/wishlist.module';
 
+// 👈 [تصحيح]: الاستيرادات الناقصة المطلوبة لتشغيل نظام حماية الـ Rate Limiting
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+
 @Module({
   imports: [
+    ThrottlerModule.forRoot([{
+      ttl: 60000, // المدة بالملي ثانية (دقيقة واحدة)
+      limit: 10, // أقصى عدد طلبات في الدقيقة لكل IP
+    }]),
     AuthModule,
     ConfigModule.forRoot({ isGlobal: true }),
     MongooseModule.forRootAsync({
@@ -75,6 +83,10 @@ import { WishlistModule } from './modules/wishlist/wishlist.module';
   ],
 
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService, 
+    //  هذا السطر الآن سيعمل بامتياز بعد توفير الاستيرادات أعلاه
+    { provide: APP_GUARD, useClass: ThrottlerGuard }
+  ],
 })
 export class AppModule {}

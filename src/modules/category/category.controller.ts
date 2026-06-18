@@ -11,6 +11,8 @@ import {
   Req,
   ParseIntPipe,
   Query,
+  ParseFilePipeBuilder,
+  HttpStatus,
 } from '@nestjs/common';
 import { CategoryService } from './category.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -29,13 +31,17 @@ export class CategoryController {
 
   @Post()
   @Roles(Role.user, Role.admin)
-  @UseInterceptors(FileInterceptor('image')) // << memory && { storage: diskStorage({}) }
+  @UseInterceptors(FileInterceptor('image'))
   create(
     @Body() data: CreateCategoryDto,
     @User('_id') userId: Types.ObjectId,
-    @UploadedFile()
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({ fileType: /(jpg|jpeg|png|webp)$/ })
+        .addMaxSizeValidator({ maxSize: 2 * 1024 * 1024 })
+        .build({ errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY }),
+    )
     file: Express.Multer.File,
-    // @Req() req: any,
   ) {
     return this.categoryService.create(data, userId, file);
   }
@@ -43,22 +49,26 @@ export class CategoryController {
   @Roles(Role.admin, Role.user)
   @Patch(':id')
   async update(
-    // @Param('id') categoryId: Types.ObjectId,  => Aya
     @Param('id', ParseObjectIdPipe) categoryId: Types.ObjectId,
     @Body() updateCategoryDto: UpdateCategoryDto,
     @User('_id') userId: Types.ObjectId,
   ) {
     return this.categoryService.update(categoryId, updateCategoryDto, userId);
   }
-  //يبقى استخدم بايب @Query | @Param من id طالما الريكويست جاي فيه
-  //  استخدمنا البايب في حالة الكويري والبارام علشان لو في خطأ في الآي دي يطلعوا من برة لبرة
+
   @Roles(Role.admin, Role.user)
   @Patch(':id/image')
   @UseInterceptors(FileInterceptor('image'))
   async updateImage(
     @Param('id') categoryId: Types.ObjectId,
     @User('_id') userId: Types.ObjectId,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({ fileType: /(jpg|jpeg|png|webp)$/ })
+        .addMaxSizeValidator({ maxSize: 2 * 1024 * 1024 })
+        .build({ errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY }),
+    )
+    file: Express.Multer.File,
   ) {
     return this.categoryService.updateImage(categoryId, file, userId);
   }
@@ -84,26 +94,3 @@ export class CategoryController {
     return this.categoryService.findAll(page);
   }
 }
-//   @Get()
-//   findAll() {
-//     return this.categoryService.findAll();
-//   }
-
-//   @Get(':id')
-//   findOne(@Param('id') id: string) {
-//     return this.categoryService.findOne(+id);
-//   }
-
-//   @Patch(':id')
-//   update(
-//     @Param('id') id: string,
-//     @Body() updateCategoryDto: UpdateCategoryDto,
-//   ) {
-//     return this.categoryService.update(+id, updateCategoryDto);
-//   }
-
-//   @Delete(':id')
-//   remove(@Param('id') id: string) {
-//     return this.categoryService.remove(+id);
-//   }
-// }

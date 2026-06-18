@@ -1,4 +1,3 @@
-import { ConfigService } from '@nestjs/config';
 import { MongooseModule, Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import { UserModelName } from './user.model';
@@ -30,12 +29,15 @@ TokenSchema.index({ expiredAt: 1 }, { expireAfterSeconds: 0 });
 TokenSchema.pre('save', async function () {
   if (this.isNew) {
     const jwtService = new JwtService();
-    const configService = new ConfigService();
     try {
-      const payload = jwtService.verify(this.token, {
-        secret: configService.get('JWT_SECRET'),
-      });
-      this.expiredAt = new Date(payload.exp * 1000);
+      // 👈 [التحديث الذكي]: استخدام decode بدلاً من verify
+      // الـ decode يقرأ البيانات (Payload) فقط دون الحاجة للمفتاح السري.
+      // هذا يحل مشكلة اختلاف المفاتيح بين الـ Access والـ Refresh توكن.
+      const payload = jwtService.decode(this.token) as any;
+      
+      if (payload && payload.exp) {
+        this.expiredAt = new Date(payload.exp * 1000);
+      }
     } catch (error) {
       throw error;
     }

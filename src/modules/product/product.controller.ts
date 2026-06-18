@@ -11,6 +11,8 @@ import {
   ParseBoolPipe,
   UploadedFile,
   Query,
+  ParseFilePipeBuilder,
+  HttpStatus,
 } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -70,13 +72,20 @@ export class ProductController {
   ) {
     return this.productService.removeImage(productId, userId, data.secure_url);
   }
+
   @Roles(Role.seller, Role.user)
   @UseInterceptors(FileInterceptor('image'))
   @Patch(':id/add-image')
   async addImage(
     @Param('id', ParseObjectIdPipe) productId: Types.ObjectId,
     @User('_id') userId: Types.ObjectId,
-    @UploadedFile() image: Express.Multer.File,
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({ fileType: /(jpg|jpeg|png|webp)$/ })
+        .addMaxSizeValidator({ maxSize: 3 * 1024 * 1024 })
+        .build({ errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY }),
+    )
+    image: Express.Multer.File,
     @Query('isThumbnail', ParseBoolPipe) isThumbnail: boolean,
   ) {
     return this.productService.addImage(productId, userId, isThumbnail, image);

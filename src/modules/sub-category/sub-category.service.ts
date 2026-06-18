@@ -149,15 +149,13 @@ export class SubCategoryService {
     return { data: subCategory };
   }
 
-  async findAll(page: number) {
-    return {
-      data: await this._SubCategoryRepository.findAll({
-        populate: [
-          { path: 'createdBy' },
-          { path: 'category', select: 'name image' },
-        ],
-        paginate: { page },
-      }),
-    };
-  }
+ async findAll(page: number) {
+  return {
+    data: await this._CategoryRepository.findAll({
+      // نحدد فقط الاسم والإيميل، ونستبعد صراحة كلمة المرور
+      populate: [{ path: 'createdBy', select: 'firstName lastName email -password' }],
+      paginate: { page },
+    }),
+  };
+}
 }

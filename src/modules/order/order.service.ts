@@ -44,7 +44,7 @@ export class OrderService {
     let originalPrice = 0;
     const products: any[] = [];
 
-    // 2. التحقق من المخزون وتجهيز المنتجات (Snapshot)
+    // 2. التحقق من المخزون وتجهيز المنتجات
     for (const prd of cart.products) {
       const product = await this._ProductService.checkProductExistence(
         prd.productId,
@@ -228,7 +228,7 @@ export class OrderService {
       );
     } catch (err: any) {
       console.error(
-        `⚠️ [Stripe Webhook] Signature verification failed:`,
+        ` [Stripe Webhook] Signature verification failed:`,
         err.message,
       );
       throw new BadRequestException(`Webhook Error: ${err.message}`);
@@ -247,9 +247,7 @@ export class OrderService {
       return;
     }
 
-    // ==========================================
-    // 🚀 بداية الـ TRANSACTION لحماية الداتابيز
-    // ==========================================
+    // TRANSACTION لحماية الداتابيز
     const dbSession = await this.connection.startSession();
     dbSession.startTransaction();
 
@@ -265,7 +263,7 @@ export class OrderService {
           payment_intent: sessionStripe.payment_intent as string,
           orderStatus: OrderStatus.placed,
         },
-        { returnDocument: 'after', session: dbSession }, // 👈 تمرير الـ session هنا
+        { returnDocument: 'after', session: dbSession },
       );
 
       if (order) {
@@ -282,7 +280,7 @@ export class OrderService {
                 item.productId as any,
                 item.quantity,
                 false,
-                dbSession, // 👈 تمرير الـ session هنا
+                dbSession,
               ),
             ),
           );
@@ -293,18 +291,15 @@ export class OrderService {
           await this._CouponService.incrementUsage(
             currentOrder.coupon,
             dbSession,
-          ); // 👈 تمرير الـ session هنا
+          );
         }
 
         // 4. مسح العربة (تمرير الجلسة)
-        await this._CartService.clearCart(currentOrder.user, dbSession); // 👈 تمرير الـ session هنا
-
-        // ==========================================
-        // ✅ تأكيد جميع العمليات وحفظها في الداتابيز
-        // ==========================================
+        await this._CartService.clearCart(currentOrder.user, dbSession);
+        //  تأكيد جميع العمليات وحفظها في الداتابيز
         await dbSession.commitTransaction();
         console.log(
-          `✅ [Stripe Webhook] Order ${orderId} finalized safely with Transaction.`,
+          ` [Stripe Webhook] Order ${orderId} finalized safely with Transaction.`,
         );
       } else {
         // إذا لم يجد الأوردر، تراجع عن أي شيء حدث داخل الجلسة
@@ -314,12 +309,10 @@ export class OrderService {
         );
       }
     } catch (error) {
-      // ==========================================
-      // 🚨 التراجع عن كل العمليات في حال حدوث أي خطأ
-      // ==========================================
+      //  التراجع عن كل العمليات في حال حدوث أي خطأ
       await dbSession.abortTransaction();
       console.error(
-        `🚨 [Stripe Webhook] Transaction Aborted due to error:`,
+        ` [Stripe Webhook] Transaction Aborted due to error:`,
         error,
       );
     } finally {

@@ -30,45 +30,49 @@ export class AuthService {
     private readonly _TokenRepository: TokenRepository,
     private readonly _CartRepository: CartRepository,
   ) {}
+
   async register(data: CreateUserDto) {
-    // try {
     const { email, otp } = data;
     const otpDoc = await this._OTPRepository.findOne({ filter: { email } });
     if (!otpDoc || !compareHash(otp, otpDoc.otp))
       throw new NotFoundException('Invalid OTP!');
+    
     await otpDoc.deleteOne();
+    
     const user = await this._UserService.create({
       ...data,
       accountAcctivated: true,
     });
     console.log({ user });
+    
     // create cart for the user
     await this._CartRepository.create({ user: user._id });
     return { success: true, message: 'Done' };
-    // } catch (error) {
-    //   throw new InternalServerErrorException(error);
-    // }  == ErrorHandlingInterceptor
   }
 
   async login(data: LoginDto) {
     const user = await this._UserService.validateUser(data);
+    
+    // 👈 [التحديث الأمني]: استخدام JWT_ACCESS_SECRET بدلاً من JWT_SECRET
     const access_token = this._JwtService.sign(
       { id: user._id },
       {
-        secret: this._ConfigService.get('JWT_SECRET'),
+        secret: this._ConfigService.get('JWT_ACCESS_SECRET'),
         expiresIn: this._ConfigService.get('ACCESS_TOKEN_EXPIRE'),
       },
     );
 
     await this._TokenRepository.create({ token: access_token, user: user._id });
 
+    // 👈 [التحديث الأمني]: استخدام JWT_REFRESH_SECRET بدلاً من JWT_SECRET
     const refresh_token = this._JwtService.sign(
       { id: user._id },
       {
-        secret: this._ConfigService.get('JWT_SECRET'),
+        secret: this._ConfigService.get('JWT_REFRESH_SECRET'),
         expiresIn: this._ConfigService.get('REFRESH_TOKEN_EXPIRE'),
       },
     );
+    
     await this._TokenRepository.create({
       token: refresh_token,
       user: user._id,
@@ -82,15 +86,19 @@ export class AuthService {
       const { email } = data;
       const user = await this._UserService.userExistByEmail(email);
       if (user) throw new BadRequestException('Email Already Registrated !');
+      
       const otp = await this._OTPRepository.findOne({ filter: { email } });
       if (otp) await otp.deleteOne();
+      
       const newOtp = randomstring.generate(6);
+      
       //send Email
       await this._MailerService.sendMail({
         to: email,
         subject: 'Account Acctivation',
         text: `Your OTP: ${newOtp}`,
       });
+      
       //save to DB
       await this._OTPRepository.create({ email, otp: newOtp });
       return { success: true, message: 'Check Email!' };
@@ -111,14 +119,17 @@ export class AuthService {
       if (!user.accountAcctivated) {
         throw new BadRequestException('Account not acctivated yet!');
       }
+      
       const otp = await this._OTPRepository.findOne({ filter: { email } });
       if (otp) await otp.deleteOne();
+      
       const newOtp = randomstring.generate(7);
       this._MailerService.sendMail({
         to: email,
         subject: 'Reset Password',
         text: `Your OTP: ${newOtp}`,
       });
+      
       await this._OTPRepository.create({ email, otp: newOtp });
       return { success: true, message: 'Check Email!' };
     } catch (error) {
@@ -138,14 +149,16 @@ export class AuthService {
       if (!user.accountAcctivated) {
         throw new BadRequestException('Account not acctivated yet!');
       }
+      
       const otpDoc = await this._OTPRepository.findOne({ filter: { email } });
       if (!otpDoc || !compareHash(otp, otpDoc.otp))
         throw new BadRequestException('Invalid OTP!');
+      
       user.password = password;
       await user.save();
+      
       // token model
       const tokens = await this._TokenRepository.findAll({
-        //data=[]
         filter: { user: user._id },
       });
 
@@ -167,57 +180,44 @@ export class AuthService {
   //   // googleLogin: اسم الدالة
   //   // (req: any): تستقبل الطلب (Request) الذي سيحتوي على بيانات المستخدم القادمة من جوجل
   //   async googleLogin(req: any) {
-  //     // if (!req.user): إذا لم يكن هناك بيانات مستخدم (مثلاً المستخدم ألغى عملية الدخول من صفحة جوجل)
   //     if (!req.user) {
-  //       // نرمي خطأ 400 (طلب غير صالح)
   //       throw new BadRequestException('No user from google');
   //     }
 
-  //     // استخراج الإيميل، الاسم الأول، والاسم الأخير من الكائن الذي أرجعته GoogleStrategy
   //     const { email, firstName, lastName } = req.user;
-
-  //     // البحث في قاعدة البيانات: هل هذا الإيميل موجود لدينا مسبقاً؟
   //     let user = await this._UserService.userExistByEmail(email);
 
-  //     // إذا لم يكن المستخدم موجوداً (هذه أول مرة يدخل فيها لموقعنا باستخدام جوجل)
   //     if (!user) {
-  //       // نقوم بإنشاء حساب جديد له فوراً في قاعدة البيانات
   //       user = await this._UserService.create({
-  //         email, // نمرر إيميل جوجل
-  //         firstName, // الاسم الأول من جوجل
-  //         lastName, // الاسم الأخير من جوجل
-  //         // نولد كلمة مرور عشوائية معقدة (لأن الدخول سيتم دائماً عبر جوجل ولن يحتاج لكتابة كلمة مرور)
+  //         email, 
+  //         firstName, 
+  //         lastName, 
   //         password: randomstring.generate(20),
-  //         // نُفعل الحساب فوراً لأن جوجل قد تأكد من صحة الإيميل بالفعل، فلا حاجة لإرسال OTP
   //         accountActivated: true,
   //       });
   //     }
 
-  //     // الآن (سواء كان المستخدم قديماً أو أنشأناه للتو)، نقوم بتوليد التوكنز له
-  //     // توليد الـ Access Token قصير الأمد
+  //     // 👈 [التحديث الأمني]: تم التعديل هنا أيضاً
   //     const access_token = this._JwtService.sign(
   //       { id: user._id },
   //       {
-  //         secret: this._ConfigService.get('JWT_SECRET'),
+  //         secret: this._ConfigService.get('JWT_ACCESS_SECRET'),
   //         expiresIn: this._ConfigService.get('ACCESS_TOKEN_EXPIRE'),
   //       },
   //     );
 
-  //     // توليد الـ Refresh Token طويل الأمد
+  //     // 👈 [التحديث الأمني]: تم التعديل هنا أيضاً
   //     const refresh_token = this._JwtService.sign(
   //       { id: user._id },
   //       {
-  //         secret: this._ConfigService.get('JWT_SECRET'),
+  //         secret: this._ConfigService.get('JWT_REFRESH_SECRET'),
   //         expiresIn: this._ConfigService.get('REFRESH_TOKEN_EXPIRE'),
   //       },
   //     );
 
-  //     // حفظ التوكنز في قاعدة البيانات (كما فعلنا في دالة الـ login العادية لضمان الأمان وإمكانية تسجيل الخروج)
-  //     // ملاحظة: تأكد من حقن _TokenRepository في الـ constructor إذا لم يكن موجوداً
   //     await this._TokenRepository.create({ token: access_token, user: user._id });
   //     await this._TokenRepository.create({ token: refresh_token, user: user._id });
 
-  //     // إرجاع التوكنز بنجاح
   //     return { success: true, data: { access_token, refresh_token } };
   //   }
 

@@ -152,14 +152,15 @@ export class CategoryService {
     return { data: category };
   }
 
-  async findAll(page: number) {
-    return {
-      data: await this._CategoryRepository.findAll({
-        populate: [{ path: 'createdBy' }],
-        paginate: { page },
-      }),
-    };
-  }
+ async findAll(page: number) {
+  return {
+    data: await this._CategoryRepository.findAll({
+      // نحدد فقط الاسم والإيميل، ونستبعد صراحة كلمة المرور
+      populate: [{ path: 'createdBy', select: 'firstName lastName email -password' }],
+      paginate: { page },
+    }),
+  };
+}
 }
 
 // import { Injectable, NotFoundException } from '@nestjs/common';

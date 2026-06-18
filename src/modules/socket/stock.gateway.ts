@@ -35,14 +35,17 @@ export class StockGateway implements OnGatewayConnection, OnGatewayDisconnect {
     console.log({ authHeader });
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new Error('Invalid token!');
+      // يفضل في السوكت فصل العميل مباشرة بدلاً من رمي خطأ قد يسقط السيرفر
+      client.disconnect();
+      return; 
     }
 
     const token = authHeader.split(' ')[1];
 
     try {
+      // 👈 [التحديث الأمني]: تم استخدام مفتاح الوصول الجديد هنا
       const payload = this._JwtService.verify(token, {
-        secret: this._ConfigService.get('JWT_SECRET'),
+        secret: this._ConfigService.get('JWT_ACCESS_SECRET'),
       });
 
       const user = await this._UserRepository.findOne({
@@ -59,7 +62,9 @@ export class StockGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       client.data.user = user;
     } catch (error) {
-      throw new UnauthorizedException();
+      // في حالة فشل التحقق، نقوم بقطع الاتصال لحماية السيرفر
+      client.disconnect();
+      return;
     }
 
     const userId = client.data.user.id;
@@ -70,8 +75,11 @@ export class StockGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   // on
   handleDisconnect(client: any) {
-    this.socketUsers.delete(client.data.user.id);
-    console.log('Client disconnected: ', client.data.user.id);
+    // التأكد من وجود المستخدم قبل محاولة حذفه لتجنب أخطاء undefined
+    if (client.data?.user?.id) {
+      this.socketUsers.delete(client.data.user.id);
+      console.log('Client disconnected: ', client.data.user.id);
+    }
   }
 
   // notify all users with the stock update
